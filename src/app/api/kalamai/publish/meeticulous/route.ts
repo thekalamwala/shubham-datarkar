@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { tokenMatches } from "@/lib/kalamai/publish-auth";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getBrand } from "@/lib/kalamai/brands";
 import { toMeeticulousDraft } from "@/lib/kalamai/export-meeticulous";
@@ -15,15 +15,6 @@ type Row = {
   publish_category: string | null;
 };
 
-function tokenOk(header: string | null, secret: string): boolean {
-  const m = /^Bearer (.+)$/.exec(header ?? "");
-  if (!m) return false;
-  const a = Buffer.from(m[1]);
-  const b = Buffer.from(secret);
-  // timingSafeEqual throws on unequal lengths; length alone is not secret enough to matter here.
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 /**
  * Server-to-server read of approved Meeticulous drafts (all authors).
  * Auth: `Authorization: Bearer ${KALAMAI_PUBLISH_TOKEN}`.
@@ -31,7 +22,7 @@ function tokenOk(header: string | null, secret: string): boolean {
 export async function GET(request: Request) {
   const secret = process.env.KALAMAI_PUBLISH_TOKEN;
   if (!secret) return NextResponse.json({ error: "Not configured." }, { status: 503 });
-  if (!tokenOk(request.headers.get("authorization"), secret)) {
+  if (!tokenMatches(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 

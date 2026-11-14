@@ -4,7 +4,8 @@
 -- read over the API, then marked published (or rejected). publish_state holds one of
 -- 'none' | 'approved' | 'published' | 'rejected'. brand says which brand config the
 -- article was written for. published_url and publish_note record where it went live
--- and any note from the publish step.
+-- and any note from the publish step. publish_category is the brand category chosen
+-- at approval time (read later by the exporter).
 --
 -- Idempotent; safe to re-run. The CHECK is inline on add column if not exists, so it
 -- is only attached when the column is created. Re-running skips it cleanly. Existing
@@ -14,4 +15,5 @@ alter table public.kalamai_articles
   add column if not exists publish_state text not null default 'none'
     check (publish_state in ('none', 'approved', 'published', 'rejected')),
   add column if not exists published_url text,
-  add column if not exists publish_note text;
+  add column if not exists publish_note text,
+  add column if not exists publish_category text;

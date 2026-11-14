@@ -11,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const ctx = await getMemberContext();
   if (ctx.role !== "admin") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => null)) ?? {};
   const brand = getBrand(String(body.brand ?? ""));
   if (!brand) return NextResponse.json({ error: "Unknown brand." }, { status: 400 });
   const decision = body.decision;
@@ -26,12 +26,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let patch: Record<string, unknown>;
   if (decision === "approve") {
     if (article.status !== "complete") return NextResponse.json({ error: "Article is not finished." }, { status: 400 });
-    // ponytail: category is validated but not persisted (no column); export defaults to brand.defaultCategory.
     if (body.category != null && !brand.categories.includes(String(body.category))) {
       return NextResponse.json({ error: "Invalid category for this brand." }, { status: 400 });
     }
-    patch = { brand: brand.slug, publish_state: "approved" };
+    patch = {
+      brand: brand.slug,
+      publish_state: "approved",
+      publish_category: body.category != null ? String(body.category) : brand.defaultCategory,
+      publish_note: null, // clear any stale reject note
+    };
   } else {
+    // Reject intentionally skips the complete check: any article can be rejected.
     patch = { publish_state: "rejected", publish_note: body.note ? String(body.note).slice(0, 500) : null };
   }
 

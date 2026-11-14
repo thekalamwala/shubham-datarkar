@@ -40,8 +40,29 @@ describe("approve route", () => {
     expect(res.status).toBe(200);
     expect(updates[0]).toMatchObject({ brand: "meeticulous", publish_state: "approved" });
   });
-  it("accepts a valid category", async () => {
+  it("persists the picked category and clears note", async () => {
     expect((await call({ brand: "meeticulous", decision: "approve", category: "Guide" })).status).toBe(200);
+    expect(updates[0]).toEqual({ brand: "meeticulous", publish_state: "approved", publish_category: "Guide", publish_note: null });
+  });
+  it("defaults category to News", async () => {
+    await call({ brand: "meeticulous", decision: "approve" });
+    expect(updates[0]).toMatchObject({ publish_category: "News" });
+  });
+  it("400 on missing/invalid decision", async () => {
+    expect((await call({ brand: "meeticulous" })).status).toBe(400);
+    expect((await call({ brand: "meeticulous", decision: "publish" })).status).toBe(400);
+  });
+  it("null body does not 500", async () => {
+    expect((await call(null)).status).toBe(400);
+  });
+  it("reject works on a non-complete article and leaves category alone", async () => {
+    article = { id: "a1", status: "writing" };
+    expect((await call({ brand: "meeticulous", decision: "reject" })).status).toBe(200);
+    expect(updates[0]).not.toHaveProperty("publish_category");
+  });
+  it("bad category writes nothing", async () => {
+    await call({ brand: "meeticulous", decision: "approve", category: "Bogus" });
+    expect(updates).toHaveLength(0);
   });
   it("rejects with note", async () => {
     const res = await call({ brand: "meeticulous", decision: "reject", note: "off-topic" });

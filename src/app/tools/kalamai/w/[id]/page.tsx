@@ -9,6 +9,8 @@ import { Container, Section } from "@/components/layout/container";
 import { PageHero } from "@/components/layout/page-hero";
 import { ArticleBody } from "@/components/content/article-body";
 import { ArticlePoller } from "@/components/kalamai/article-poller";
+import { ApproveControl } from "@/components/kalamai/approve-control";
+import { getBrand } from "@/lib/kalamai/brands";
 import { ExportButtons } from "@/components/kalamai/export-buttons";
 import { blocksToMarkdown, blocksToHtml } from "@/lib/kalamai/serialize";
 
@@ -29,7 +31,7 @@ export default async function KalamaiArticlePage({ params }: { params: Promise<{
 
   let q = supabaseAdmin()
     .from("kalamai_articles")
-    .select("id, status, progress, blocks, meta, score, analysis_id")
+    .select("id, status, progress, blocks, meta, score, analysis_id, publish_state")
     .eq("id", id);
   if (ctx.role !== "admin") q = q.eq("user_id", ctx.user!.id); // admin can view any user's article
   const { data: article } = await q.maybeSingle();
@@ -70,6 +72,19 @@ export default async function KalamaiArticlePage({ params }: { params: Promise<{
                   )}
                 </div>
               )}
+
+              {ctx.role === "admin" && (() => {
+                const brand = getBrand("meeticulous")!;
+                return (
+                  <ApproveControl
+                    id={article.id}
+                    brand={brand.slug}
+                    categories={brand.categories}
+                    defaultCategory={brand.defaultCategory}
+                    initialState={article.publish_state ?? "none"}
+                  />
+                );
+              })()}
 
               <ExportButtons slug={slugify(title)} markdown={blocksToMarkdown(blocks)} html={blocksToHtml(blocks)} />
 
